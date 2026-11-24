@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>かきとめ帳</title>
+<meta name="description" content="思いついたことをすぐ書きとめられる、シンプルなメモ帳アプリ">
+<meta name="theme-color" content="#eef2f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101615" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two-pane notebook — memo list on the left, a lined writing sheet on the right; on phones one pane at a time. */
+:root{
+  --bg:#eef2f1; --sheet:#ffffff; --ink:#1b2624; --muted:#5f6d6a; --line:#d5dedb;
+  --accent:#23706a; --accent-soft:#dcece9; --pin:#b7791f; --danger:#b3261e; --rule:#e8eeec;
+  --mark:#fbe39a; --fav:#c2410c;
+  --f-display:"Zen Maru Gothic","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --h:34px; --r:8px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101615; --sheet:#171f1e; --ink:#e3ebe9; --muted:#93a3a0; --line:#2a3634;
+  --accent:#6cc7bd; --accent-soft:#1c3633; --pin:#e0b35a; --danger:#f2867e; --rule:#1f2927;
+  --mark:#5c4b12; --fav:#f59e6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101615; --sheet:#171f1e; --ink:#e3ebe9; --muted:#93a3a0; --line:#2a3634;
+  --accent:#6cc7bd; --accent-soft:#1c3633; --pin:#e0b35a; --danger:#f2867e; --rule:#1f2927;
+  --mark:#5c4b12; --fav:#f59e6b; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app{height:100%;max-width:1180px;margin:0 auto;padding-block:16px;display:grid;grid-template-columns:320px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:16px}
+svg.i{width:16px;height:16px;flex:none}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+
+/* ---- unified controls ---- */
+.btn{font:inherit;font-size:13.5px;color:var(--ink);height:var(--h);padding:0 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--sheet);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--sheet);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--line)}
+.btn.icon{width:var(--h);padding:0}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:var(--sheet);font-weight:700}
+.btn.ghost.del:hover{color:var(--danger);border-color:var(--danger)}
+.btn[aria-pressed="true"].pin{color:var(--pin);border-color:var(--pin)}
+.btn[aria-pressed="true"].fav{color:var(--fav);border-color:var(--fav)}
+.btn[aria-pressed="true"] svg.i{fill:currentColor}
+.field{font:inherit;font-size:14px;height:var(--h);width:100%;padding:0 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);color:var(--ink)}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+:is(button,select,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kbd{font-family:var(--f-mono);font-size:11px;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.75;line-height:1.5}
+
+/* ---- list pane ---- */
+.side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:2px}
+h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
+.search{position:relative}
+.search .lead{position:absolute;left:11px;top:50%;translate:0 -50%;color:var(--muted);pointer-events:none}
+#q{padding-left:34px;padding-right:34px}
+#q::-webkit-search-cancel-button{display:none}
+#qClear{position:absolute;right:2px;top:50%;translate:0 -50%;height:30px;width:30px}
+.tools{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);padding:2px;gap:2px}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--muted);height:28px;padding:0 10px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.seg .n{font-family:var(--f-mono);font-size:11px;font-variant-numeric:tabular-nums}
+#sort{width:auto;font-size:13px;padding:0 8px;height:32px}
+.tagbar{display:flex;gap:6px;flex-wrap:wrap}
+.tchip{font:inherit;font-size:12.5px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:1px 10px;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.tchip:hover{border-color:var(--accent);color:var(--ink)}
+.tchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.tchip .n{font-family:var(--f-mono);font-size:10.5px;opacity:.8}
+.list{list-style:none;margin:0 -4px;padding:0 4px;overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:2px}
+.memo{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:var(--r);cursor:pointer;color:inherit;font:inherit;position:relative}
+.memo:hover{background:var(--sheet)}
+.memo[aria-current="true"]{background:var(--accent-soft)}
+.memo[aria-current="true"]::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--accent)}
+.memo .row{display:flex;gap:6px;align-items:center;min-width:0}
+.memo .t{font-weight:700;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.memo .t.untitled{color:var(--muted);font-weight:500}
+.memo .flags{display:flex;gap:3px;flex:none}
+.memo .flags .p{color:var(--pin)} .memo .flags .f{color:var(--fav)}
+.memo .flags svg.i{width:14px;height:14px;fill:currentColor}
+.memo .s{font-size:13px;line-height:1.55;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.memo .meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;white-space:nowrap}
+.memo .d{font-family:var(--f-mono);font-variant-numeric:tabular-nums;flex:none}
+.memo .tg{overflow:hidden;text-overflow:ellipsis}
+.list-note{color:var(--muted);font-size:13px;padding:20px 12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.list-note strong{color:var(--ink);font-size:14px}
+.about{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:13px;line-height:1.7;color:var(--muted)}
+.about h2{font-family:var(--f-display);font-size:15px;color:var(--ink);margin:0 0 6px;line-height:1.5}
+.about p{margin:0 0 6px}
+.about ul{margin:0;padding-left:1.2em}
+.side-foot{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:2px}
+
+/* ---- editor pane ---- */
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.edit{display:flex;flex-direction:column;flex:1;min-height:0}
+.bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar .grow{flex:1}
+.back{display:none}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);min-height:var(--h)}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status[data-s="saving"] .dot{background:var(--pin);animation:pulse 1s ease-in-out infinite}
+.status[data-s="saved"]{color:var(--accent)} .status[data-s="saved"] .dot{background:var(--accent)}
+.status[data-s="error"]{color:var(--danger);font-weight:700} .status[data-s="error"] .dot{background:var(--danger)}
+.status .btn{height:28px;font-size:12.5px}
+@keyframes pulse{50%{opacity:.3}}
+.confirm{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--danger)}
+.editor{flex:1;min-height:0;display:flex;flex-direction:column;padding:22px clamp(16px,4vw,44px) 12px;gap:8px;overflow:auto}
+#title{font-family:var(--f-display);font-size:24px;font-weight:700;border:0;background:transparent;color:var(--ink);padding:0;width:100%;line-height:1.4}
+#title:focus,#body:focus{outline:none}
+#title::placeholder,#body::placeholder{color:var(--muted);opacity:.65}
+.stamp{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-bottom:6px;border-bottom:1px dashed var(--line)}
+.etag{display:inline-flex;align-items:center;gap:2px;font-size:12.5px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 4px 1px 10px}
+.etag button{border:0;background:transparent;color:inherit;cursor:pointer;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
+.etag button:hover{background:var(--sheet)}
+#tagInput{border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;min-width:8em;flex:1;height:26px;padding:0 2px}
+#tagInput:focus{outline:none}
+#tagInput::placeholder{color:var(--muted);opacity:.8}
+#body{flex:1;min-height:260px;resize:none;border:0;color:var(--ink);font:inherit;font-size:16px;line-height:32px;padding:0;margin-top:4px;
+  background:repeating-linear-gradient(to bottom,transparent 0 31px,var(--rule) 31px 32px);background-attachment:local;background-color:transparent}
+.foot{display:flex;justify-content:space-between;gap:10px;padding:8px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.blank{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:14px;padding:32px clamp(16px,4vw,44px);text-align:center;color:var(--muted)}
+.blank>*{flex:none}
+.blank>.art{margin-top:auto}.blank>:last-child{margin-bottom:auto}
+.blank .back{align-self:flex-start}
+.blank svg.art{width:120px;height:auto;color:var(--accent)}
+.blank strong{font-family:var(--f-display);font-size:20px;color:var(--ink)}
+.blank p{margin:0;max-width:36ch}
+.hints{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px}
+.hints span{display:inline-flex;gap:6px;align-items:center}
+.guide{width:100%;max-width:680px;text-align:left;border-top:1px solid var(--line);padding-top:20px;margin-top:8px;display:flex;flex-direction:column;gap:14px}
+.guide h2{font-family:var(--f-display);font-size:16px;color:var(--ink);margin:0;letter-spacing:.04em}
+.guide dl{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px}
+.guide dl>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.guide dt{font-weight:700;color:var(--ink);font-size:14px;display:flex;align-items:center;gap:8px}
+.guide dt::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--accent);flex:none}
+.guide dd{margin:0;font-size:13px;line-height:1.75;color:var(--muted)}
+.guide dd b{color:var(--ink);font-weight:500}
+.guide .kbd{opacity:1}
+.guide-link{font:inherit;font-size:12px;border:0;background:none;color:var(--accent);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:720px){.guide dl{grid-template-columns:minmax(0,1fr)}.blank{padding-top:16px}}
+
+@media (max-width:720px){
+  .app{grid-template-columns:minmax(0,1fr);padding-block:12px}
+  .app.editing .side{display:none}
+  .app:not(.editing) .sheet{display:none}
+  .back{display:inline-flex}
+  .memo{padding:12px}
+  .field,#tagInput{font-size:16px}
+  .hide-sm{display:none}
+  .editor{padding-top:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="side" aria-label="メモ一覧">
+    <div class="brand">
+      <h1>かきとめ帳</h1>
+      <button class="btn primary" id="new" type="button" title="新しいメモ（Ctrl+N / Alt+N）">
+        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規メモ</button>
+    </div>
+    <div class="search">
+      <svg class="i lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input class="field" id="q" type="search" placeholder="タイトル・本文・タグを検索" aria-label="メモを検索" autocomplete="off">
+      <button class="btn ghost icon" id="qClear" type="button" aria-label="検索をクリア" hidden>✕</button>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="表示するメモ">
+        <button type="button" id="vAll" aria-pressed="true">すべて <span class="n" id="nAll"></span></button>
+        <button type="button" id="vFav" aria-pressed="false">お気に入り <span class="n" id="nFav"></span></button>
+      </div>
+      <select class="field" id="sort" aria-label="並び順">
+        <option value="updated-desc">更新が新しい順</option>
+        <option value="updated-asc">更新が古い順</option>
+        <option value="created-desc">作成が新しい順</option>
+      </select>
+    </div>
+    <div class="tagbar" id="tagbar" role="group" aria-label="タグで絞り込み" hidden></div>
+    <section class="about" id="about" aria-labelledby="aboutTitle">
+      <h2 id="aboutTitle">かきとめ帳は、すぐ書けてすぐ探せる無料のメモ帳です</h2>
+      <p>思いついたこと、買い物リスト、会議の要点などを、ブラウザだけで手軽に書きとめられます。登録やインストールは不要で、入力した内容は自動で保存されます。</p>
+      <ul>
+        <li>タイトル・本文・タグからすばやく検索（ひらがな・カタカナを区別しません）</li>
+        <li>ピン留め・お気に入り・タグで整理</li>
+        <li>メモはこのブラウザの中だけに保存され、外部には送信されません</li>
+        <li>バックアップファイルで別の端末へ移せます</li>
+        <li>パソコンでもスマートフォンでも使えます</li>
+      </ul>
+    </section>
+    <ul class="list" id="list" aria-live="polite"></ul>
+    <div class="side-foot"><span id="count"></span><button class="guide-link" id="showGuide" type="button">使い方</button><span id="where"></span></div>
+    <div class="side-foot">
+      <button class="guide-link" id="exportBtn" type="button">バックアップを書き出す</button>
+      <button class="guide-link" id="importBtn" type="button">バックアップから読み込む</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </aside>
+
+  <main class="sheet" id="sheet">
+    <div class="blank" id="blank">
+      <button class="btn ghost back" id="back2" type="button">← 一覧</button>
+      <svg class="art" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="18" y="8" width="84" height="74" rx="6" fill="var(--accent-soft)"/>
+        <path d="M30 30h60M30 44h60M30 58h40" stroke-linecap="round" opacity=".55"/>
+        <path d="m78 70 18-18 6 6-18 18h-6z" fill="var(--sheet)"/>
+      </svg>
+      <strong id="blankTitle">メモを読み込んでいます…</strong>
+      <p id="blankText">保存したメモがここに表示されます。</p>
+      <button class="btn primary" id="new2" type="button" hidden>新しいメモを書く</button>
+      <div class="hints hide-sm" id="hints" hidden>
+        <span><span class="kbd alt">Alt</span>+<span class="kbd">N</span> 新規メモ</span>
+        <span><span class="kbd">/</span> 検索</span>
+      </div>
+      <section class="guide" id="guide" aria-labelledby="guideTitle" hidden>
+        <h2 id="guideTitle">使い方</h2>
+        <dl>
+          <div><dt>メモを書く</dt><dd>「新規メモ」か <span class="kbd alt">Alt</span>+<span class="kbd">N</span> で作成します。タイトルを入力して <span class="kbd">Enter</span> を押すと本文に移ります。</dd></div>
+          <div><dt>自動で保存</dt><dd>入力をやめると自動で保存されます。右上に<b>保存中…</b>→<b>保存済み</b>と表示されます。<b>保存失敗</b>と出たら「再試行」を押してください。</dd></div>
+          <div><dt>探す</dt><dd>検索欄にキーワードを入れると、タイトル・本文・タグからすぐに絞り込みます。ひらがなとカタカナは区別しません。<span class="kbd">/</span> で検索欄へ、<span class="kbd">Enter</span> で先頭のメモを開き、<span class="kbd">Esc</span> で検索を消します。</dd></div>
+          <div><dt>ピン留めとお気に入り</dt><dd><b>ピン留め</b>したメモは一覧の一番上に固定されます。<b>お気に入り</b>にしたメモは、一覧上部の「お気に入り」でまとめて見られます。</dd></div>
+          <div><dt>タグで整理</dt><dd>タイトルの下の欄にタグを入力して <span class="kbd">Enter</span> で追加、× で外せます。一覧上部のタグを押すと、そのタグのメモだけを表示します。</dd></div>
+          <div><dt>並び替えと削除</dt><dd>並び順は「更新が新しい順・古い順・作成が新しい順」から選べます。削除は「削除」→「削除する」で確定し、元に戻せません。</dd></div>
+          <div><dt>保存場所</dt><dd>メモは<b>このブラウザの中だけ</b>に保存され、外部には送信されません。別の端末やブラウザからは見えず、ブラウザの閲覧データを消去するとメモも消えます。</dd></div>
+          <div><dt>バックアップ</dt><dd>一覧の下の「バックアップを書き出す」で、全メモを1つのファイル（.json）に保存できます。別の端末やブラウザで「バックアップから読み込む」を押してそのファイルを選ぶと、メモを移せます。同じメモがある場合は、更新が新しいほうを残します。</dd></div>
+          <div><dt>スマートフォン</dt><dd>一覧でメモを押すと編集画面に切り替わり、「← 一覧」で戻ります。</dd></div>
+        </dl>
+      </section>
+    </div>
+    <div class="edit" id="editWrap" hidden>
+      <div class="bar">
+        <button class="btn ghost back" id="back" type="button">← 一覧</button>
+        <button class="btn ghost pin" id="pin" type="button" aria-pressed="false" title="一覧の上部に固定">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z"/><path d="M12 14v7" stroke-linecap="round"/></svg><span class="hide-sm">ピン留め</span></button>
+        <button class="btn ghost fav" id="fav" type="button" aria-pressed="false" title="お気に入り">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg><span class="hide-sm">お気に入り</span></button>
+        <span class="grow"></span>
+        <span class="status" id="status" aria-live="polite"></span>
+        <span id="delArea"><button class="btn ghost del" id="del" type="button">削除</button></span>
+      </div>
+      <div class="editor">
+        <input id="title" type="text" placeholder="タイトル" aria-label="タイトル" maxlength="120" autocomplete="off">
+        <div class="stamp" id="stamp"></div>
+        <div class="tagrow" id="tagrow">
+          <span id="etags" style="display:contents"></span>
+          <input id="tagInput" type="text" placeholder="＃タグを追加（Enterで確定）" aria-label="タグを追加" maxlength="24" autocomplete="off">
+        </div>
+        <textarea id="body" placeholder="ここに書きとめる…" aria-label="本文"></textarea>
+      </div>
+      <div class="foot"><span id="chars"></span><span id="lines"></span></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const S={memos:[],sel:null,q:"",view:"all",tag:null,sort:"updated-desc",backend:null,loaded:false,first:true,
+  deleted:new Set(),dirty:{},timers:{},chain:{},seq:{},state:{},err:{},savedAt:{}};
+const LS_KEY="kakitome-memos-v1", PREF_KEY="kakitome-prefs-v1";
+const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);
+const fine=()=>matchMedia("(pointer:fine)").matches;
+const wide=()=>matchMedia("(min-width:721px)").matches;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const ICON={
+  pin:'<svg class="i" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z"/><path d="M12 14v7"/></svg>',
+  fav:'<svg class="i" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>'
+};
+try{const p=JSON.parse(localStorage.getItem(PREF_KEY)||"{}");if(["updated-desc","updated-asc","created-desc"].includes(p.sort))S.sort=p.sort;}catch(e){}
+$("sort").value=S.sort;
+if(IS_MAC)document.querySelectorAll(".kbd.alt").forEach(k=>{k.textContent="⌥ Option";});
+
+/* ---------- text helpers (search is width/kana insensitive) ---------- */
+const kata2hira=s=>s.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+const normChar=c=>kata2hira(c.normalize("NFKC").toLowerCase());
+const norm=s=>[...(s||"")].map(normChar).join("");
+const terms=()=>norm(S.q).split(/\s+/).filter(Boolean);
+function hits(text,ts){ // per code point: is it inside a match?
+  const chars=[...text],on=new Array(chars.length).fill(false);
+  if(!ts.length)return{chars,on};
+  const owner=[];let flat="";
+  chars.forEach((c,i)=>{const n=normChar(c);flat+=n;for(let k=0;k<n.length;k++)owner.push(i);});
+  for(const t of ts){let i=flat.indexOf(t);while(i>-1){for(let j=i;j<i+t.length;j++)on[owner[j]]=true;i=flat.indexOf(t,i+t.length);}}
+  return{chars,on};
+}
+function fillHL(el,text,ts,from=0,to){ // safe DOM highlight
+  const{chars,on}=hits(text,ts);to=to??chars.length;
+  let buf="",m=false;
+  const flush=()=>{if(!buf)return;if(m){const k=document.createElement("mark");k.textContent=buf;el.append(k);}else el.append(buf);buf="";};
+  for(let i=from;i<to;i++){if(on[i]!==m){flush();m=on[i];}buf+=chars[i];}
+  flush();
+}
+const WD="日月火水木金土",p2=x=>String(x).padStart(2,"0");
+function fmt(ts,long){
+  if(!ts)return"";const d=new Date(ts),n=new Date(),hm=`${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  if(long)return`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}） ${hm}`;
+  if(d.toDateString()===n.toDateString())return"今日 "+hm;
+  const y=new Date(n);y.setDate(n.getDate()-1);
+  if(d.toDateString()===y.toDateString())return"昨日 "+hm;
+  return d.getFullYear()===n.getFullYear()?`${d.getMonth()+1}/${d.getDate()} ${hm}`:`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+/* ---------- data model ---------- */
+function normalizeMemo(m){
+  const tags=Array.isArray(m.tags)?[...new Set(m.tags.filter(t=>typeof t==="string"&&t.trim()).map(t=>t.trim()))]:[];
+  const c=Number(m.createdAt)||Number(m.updatedAt)||0,u=Number(m.updatedAt)||c;
+  return{id:m.id,title:typeof m.title==="string"?m.title:"",body:typeof m.body==="string"?m.body:"",
+    pinned:!!m.pinned,favorite:!!m.favorite,tags,createdAt:c,updatedAt:u};
+}
+const toDoc=m=>({title:m.title,body:m.body,pinned:m.pinned,favorite:m.favorite,tags:m.tags,createdAt:m.createdAt,updatedAt:m.updatedAt});
+
+/* ---------- storage: this browser's localStorage ---------- */
+function localBackend(){
+  const read=()=>{try{return JSON.parse(localStorage.getItem(LS_KEY)||"{}")}catch(e){return{}}};
+  let all=read(),cb=()=>{};
+  const write=()=>{try{localStorage.setItem(LS_KEY,JSON.stringify(all))}catch(e){throw{code:"local_unavailable"}}};
+  const emit=()=>cb(Object.entries(all).map(([id,v])=>({id,...v})));
+  // keep several open tabs in sync
+  window.addEventListener("storage",e=>{if(e.key===LS_KEY){all=read();emit();}});
+  return{kind:"local",
+    subscribe(f){cb=f;emit();},
+    async save(id,data){all[id]={...(all[id]||{}),...data};write();emit();},
+    async remove(id){delete all[id];write();emit();}};
+}
+
+/* ---------- derived views ---------- */
+const current=()=>S.memos.find(m=>m.id===S.sel);
+function visible(){
+  const ts=terms();
+  const list=S.memos.filter(m=>(S.view!=="fav"||m.favorite)&&(!S.tag||m.tags.includes(S.tag))&&
+    (!ts.length||ts.every(t=>norm(m.title+"\n"+m.body+"\n"+m.tags.join(" ")).includes(t))));
+  const key={"updated-desc":(a,b)=>b.updatedAt-a.updatedAt,"updated-asc":(a,b)=>a.updatedAt-b.updatedAt,"created-desc":(a,b)=>b.createdAt-a.createdAt}[S.sort];
+  return list.sort((a,b)=>(b.pinned-a.pinned)||key(a,b));
+}
+function allTags(){
+  const c=new Map();S.memos.forEach(m=>m.tags.forEach(t=>c.set(t,(c.get(t)||0)+1)));
+  return[...c].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"ja"));
+}
+
+/* ---------- rendering ---------- */
+function renderList(){
+  const ul=$("list");ul.textContent="";
+  const ts=terms(),list=visible();
+  $("nAll").textContent=S.memos.length||"";$("nFav").textContent=S.memos.filter(m=>m.favorite).length||"";
+  $("vAll").setAttribute("aria-pressed",S.view==="all");$("vFav").setAttribute("aria-pressed",S.view==="fav");
+  $("qClear").hidden=!S.q;
+  $("about").hidden=S.loaded&&S.memos.length>0; // intro only while there are no memos
+  const tb=$("tagbar"),tags=allTags();
+  if(S.tag&&!tags.some(([t])=>t===S.tag))S.tag=null;
+  tb.textContent="";tb.hidden=!tags.length;
+  for(const[t,n]of tags){const b=document.createElement("button");b.type="button";b.className="tchip";b.setAttribute("aria-pressed",t===S.tag);
+    b.append("#"+t);const s=document.createElement("span");s.className="n";s.textContent=n;b.append(s);
+    b.onclick=()=>{S.tag=S.tag===t?null:t;renderList();};tb.append(b);}
+
+  if(!S.loaded){note("読み込み中…");}
+  else if(!S.memos.length){note("メモはまだありません","右上の「新規メモ」から書き始めましょう。",["新しいメモを書く",createMemo,true]);}
+  else if(!list.length){
+    if(S.q)note(`「${S.q.trim()}」に一致するメモはありません`,"タイトル・本文・タグを検索しています。言葉を短くするか、別の言い方で試してください。",["検索をクリア",clearSearch]);
+    else note(S.view==="fav"?"お気に入りのメモはありません":"このタグのメモはありません","メモを開いて ☆ を押すと、お気に入りに追加できます。",["絞り込みを解除",()=>{S.view="all";S.tag=null;renderList();}]);
+  }
+  for(const m of list){
+    const li=document.createElement("li"),b=document.createElement("button");
+    b.type="button";b.className="memo";b.dataset.id=m.id;b.setAttribute("aria-current",m.id===S.sel);
+    const row=document.createElement("span");row.className="row";
+    const t=document.createElement("span");t.className="t";
+    if(m.title.trim())fillHL(t,m.title,ts);else{t.classList.add("untitled");t.textContent="無題のメモ";}
+    const fl=document.createElement("span");fl.className="flags";
+    if(m.pinned)fl.insertAdjacentHTML("beforeend",`<span class="p" title="ピン留め">${ICON.pin}</span>`);
+    if(m.favorite)fl.insertAdjacentHTML("beforeend",`<span class="f" title="お気に入り">${ICON.fav}</span>`);
+    row.append(t,fl);
+    const s=document.createElement("span");s.className="s";
+    const flat=m.body.replace(/\s+/g," ").trim();
+    if(!flat){s.textContent="本文なし";}
+    else{const{on}=hits(flat,ts),first=on.indexOf(true),total=on.length;
+      let from=0;if(first>28){from=first-14;s.append("…");}
+      fillHL(s,flat,ts,from,Math.min(total,from+140));}
+    const meta=document.createElement("span");meta.className="meta";
+    const d=document.createElement("span");d.className="d";d.textContent=fmt(S.sort==="created-desc"?m.createdAt:m.updatedAt);meta.append(d);
+    if(m.tags.length){const tg=document.createElement("span");tg.className="tg";fillHL(tg,m.tags.map(x=>"#"+x).join(" "),ts);meta.append(tg);}
+    b.append(row,s,meta);
+    b.onclick=()=>select(m.id,{open:true,focus:m.title.trim()?"body":"title"});
+    li.append(b);ul.append(li);
+  }
+  const shown=list.length,total=S.memos.length;
+  $("count").textContent=!S.loaded?"":(shown===total?`${total} 件のメモ`:`${total} 件中 ${shown} 件を表示`);
+}
+function note(title,text,action){
+  const li=document.createElement("li");li.className="list-note";
+  const s=document.createElement("strong");s.textContent=title;li.append(s);
+  if(text){const p=document.createElement("span");p.textContent=text;li.append(p);}
+  if(action){const b=document.createElement("button");b.type="button";b.className="btn"+(action[2]?" primary":"");b.textContent=action[0];b.onclick=action[1];li.append(b);}
+  $("list").append(li);
+}
+function renderEditor(force){
+  const m=current();
+  $("editWrap").hidden=!m;$("blank").hidden=!!m;
+  if(!m){
+    if(S.loaded){
+      const none=!S.memos.length;
+      $("blankTitle").textContent=none?"最初のメモを書きましょう":"メモを選んでください";
+      $("blankText").textContent=none?"思いついたこと、買い物リスト、会議の要点。書いた内容は自動で保存されます。":"左の一覧から開くか、新しいメモを書き始めましょう。";
+      $("new2").hidden=false;$("hints").hidden=false;$("guide").hidden=false;
+    }
+    return;
+  }
+  const ae=document.activeElement;
+  if(force||(!S.dirty[m.id]&&ae!==$("title")))$("title").value=m.title;
+  if(force||(!S.dirty[m.id]&&ae!==$("body")))$("body").value=m.body;
+  $("pin").setAttribute("aria-pressed",m.pinned);$("fav").setAttribute("aria-pressed",m.favorite);
+  $("stamp").textContent="作成 "+fmt(m.createdAt,true)+(m.updatedAt&&m.updatedAt!==m.createdAt?"　・　更新 "+fmt(m.updatedAt,true):"");
+  const et=$("etags");et.textContent="";
+  m.tags.forEach(t=>{const c=document.createElement("span");c.className="etag";c.append("#"+t);
+    const x=document.createElement("button");x.type="button";x.textContent="×";x.setAttribute("aria-label",`タグ「${t}」を外す`);
+    x.onclick=()=>{removeTag(t);$("tagInput").focus();};c.append(x);et.append(c);});
+  counts();renderStatus();
+}
+function counts(){
+  const v=$("body").value;
+  $("chars").textContent=`${[...v.replace(/\s/g,"")].length.toLocaleString()} 文字（空白除く）`;
+  $("lines").textContent=`${v?v.split("\n").length:0} 行`;
+}
+function renderStatus(){
+  const el=$("status"),id=S.sel;if(!id)return;
+  const st=S.state[id]||"saved";el.dataset.s=st;el.textContent="";
+  const dot=document.createElement("span");dot.className="dot";el.append(dot);
+  if(st==="pending"||st==="saving")el.append("保存中…");
+  else if(st==="error"){el.append("保存失敗："+(S.err[id]||"もう一度お試しください"));
+    const r=document.createElement("button");r.type="button";r.className="btn";r.textContent="再試行";r.onclick=()=>persist(id);el.append(r);}
+  else el.append("この端末に保存済み"+(S.savedAt[id]?" "+fmt(S.savedAt[id]).replace("今日 ",""):""));
+}
+function render(force){renderList();renderEditor(force);}
+
+/* ---------- saving ---------- */
+function schedule(id,delay=700){
+  S.dirty[id]=true;S.state[id]="pending";renderStatus();
+  clearTimeout(S.timers[id]);S.timers[id]=setTimeout(()=>persist(id),delay);
+}
+function persist(id){
+  const m=S.memos.find(x=>x.id===id);if(!m||S.deleted.has(id))return;
+  clearTimeout(S.timers[id]);delete S.timers[id];
+  const seq=S.seq[id]=(S.seq[id]||0)+1,data=toDoc(m);
+  S.state[id]="saving";delete S.err[id];if(id===S.sel)renderStatus();
+  const run=()=>S.backend.save(id,data);
+  const p=(S.chain[id]||Promise.resolve()).then(run,run);
+  S.chain[id]=p.catch(()=>{});
+  p.then(()=>{if(S.seq[id]!==seq||S.timers[id])return;
+      S.dirty[id]=false;S.state[id]="saved";S.savedAt[id]=Date.now();if(id===S.sel)renderStatus();},
+    e=>{if(S.seq[id]!==seq)return;S.state[id]="error";
+      S.err[id]=e&&e.code==="local_unavailable"?"ブラウザに保存できません（容量や設定を確認してください）":"もう一度お試しください";
+      if(id===S.sel)renderStatus();});
+}
+function flushAll(){for(const id of Object.keys(S.timers))persist(id);}
+
+/* ---------- actions ---------- */
+function select(id,{open=false,focus=null}={}){
+  flushAll();S.sel=id;resetDelete();$("tagInput").value="";
+  if(open)$("app").classList.add("editing");
+  render(true);
+  document.querySelector(".editor").scrollTop=0;
+  if(focus==="title")$("title").focus();
+  else if(focus==="body"&&fine()){const b=$("body");b.focus();const n=b.value.length;b.setSelectionRange(n,n);}
+}
+function edit(){
+  const m=current();if(!m)return;
+  m.title=$("title").value;m.body=$("body").value;m.updatedAt=Date.now();
+  counts();schedule(m.id);renderList();
+}
+function createMemo(){
+  if(!S.backend)return;
+  const c=current();
+  if(c&&!c.title.trim()&&!c.body.trim()&&!c.tags.length){$("app").classList.add("editing");$("title").focus();return;} // reuse an empty memo
+  const now=Date.now(),m={id:uid(),title:"",body:"",pinned:false,favorite:false,tags:[],createdAt:now,updatedAt:now};
+  S.memos.push(m);S.q="";$("q").value="";S.view="all";S.tag=null;
+  select(m.id,{open:true,focus:"title"});persist(m.id);
+}
+function addTag(raw){
+  const m=current();if(!m)return;
+  const t=raw.trim().replace(/^[#＃]+/,"").replace(/\s+/g," ").slice(0,24);
+  if(!t||m.tags.some(x=>norm(x)===norm(t))||m.tags.length>=10)return;
+  m.tags=[...m.tags,t];m.updatedAt=Date.now();schedule(m.id,300);render();
+}
+function removeTag(t){const m=current();if(!m)return;m.tags=m.tags.filter(x=>x!==t);m.updatedAt=Date.now();schedule(m.id,300);render();}
+function toggle(field){const m=current();if(!m)return;m[field]=!m[field];schedule(m.id,0);render();}
+function clearSearch(){S.q="";$("q").value="";renderList();$("q").focus();}
+function resetDelete(){$("delArea").replaceChildren($("del"));}
+$("del").onclick=()=>{
+  const wrap=document.createElement("span");wrap.className="confirm";
+  const msg=document.createElement("span");msg.textContent="削除しますか？";
+  const yes=document.createElement("button");yes.type="button";yes.className="btn danger";yes.textContent="削除する";
+  const no=document.createElement("button");no.type="button";no.className="btn";no.textContent="やめる";
+  no.onclick=()=>{resetDelete();$("del").focus();};
+  yes.onclick=()=>{
+    const id=S.sel;clearTimeout(S.timers[id]);delete S.timers[id];S.deleted.add(id);
+    S.memos=S.memos.filter(m=>m.id!==id);S.sel=null;resetDelete();$("app").classList.remove("editing");render();
+    const run=()=>S.backend.remove(id);
+    (S.chain[id]||Promise.resolve()).then(run,run).catch(()=>{S.deleted.delete(id);
+      $("count").textContent="削除できませんでした。もう一度お試しください";});
+  };
+  wrap.append(msg,yes,no);$("delArea").replaceChildren(wrap);no.focus();
+};
+
+/* ---------- events ---------- */
+$("pin").onclick=()=>toggle("pinned");
+$("fav").onclick=()=>toggle("favorite");
+$("title").addEventListener("input",edit);
+$("body").addEventListener("input",edit);
+$("title").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing){e.preventDefault();$("body").focus();}});
+const ti=$("tagInput");
+ti.addEventListener("keydown",e=>{
+  if(e.isComposing)return;
+  if(e.key==="Enter"||e.key===","){e.preventDefault();addTag(ti.value);ti.value="";}
+  else if(e.key==="Backspace"&&!ti.value){const m=current();if(m&&m.tags.length)removeTag(m.tags[m.tags.length-1]);}
+});
+ti.addEventListener("input",e=>{if(e.isComposing)return;if(/[,、]/.test(ti.value)){ti.value.split(/[,、]/).slice(0,-1).forEach(addTag);ti.value=ti.value.split(/[,、]/).pop();}});
+ti.addEventListener("blur",()=>{if(ti.value.trim()){addTag(ti.value);ti.value="";}});
+$("q").addEventListener("input",e=>{S.q=e.target.value;renderList();});
+$("q").addEventListener("keydown",e=>{
+  if(e.key==="Escape"){e.preventDefault();S.q="";e.target.value="";renderList();}
+  if(e.key==="Enter"&&!e.isComposing){const f=visible()[0];if(f){e.preventDefault();select(f.id,{open:true,focus:"body"});}}
+});
+$("qClear").onclick=clearSearch;
+$("vAll").onclick=()=>{S.view="all";renderList();};
+$("vFav").onclick=()=>{S.view="fav";renderList();};
+$("sort").addEventListener("change",e=>{S.sort=e.target.value;try{localStorage.setItem(PREF_KEY,JSON.stringify({sort:S.sort}))}catch(_){}renderList();});
+$("new").onclick=createMemo;$("new2").onclick=createMemo;
+$("showGuide").onclick=()=>{flushAll();S.sel=null;resetDelete();$("app").classList.add("editing");render();$("blank").scrollTop=$("guide").offsetTop-16;};
+$("back2").onclick=()=>{$("app").classList.remove("editing");renderList();};
+$("back").onclick=()=>{flushAll();$("app").classList.remove("editing");renderList();
+  document.querySelector(`.memo[data-id="${S.sel}"]`)?.scrollIntoView({block:"nearest"});};
+document.addEventListener("keydown",e=>{
+  const k=(e.key||"").toLowerCase();
+  if(((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&k==="n")||(e.altKey&&!e.ctrlKey&&!e.metaKey&&e.code==="KeyN")){e.preventDefault();createMemo();return;}
+  const typing=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||"");
+  if(e.key==="/"&&!typing&&!e.ctrlKey&&!e.metaKey){e.preventDefault();$("q").focus();$("q").select();}
+},true);
+window.addEventListener("pagehide",flushAll);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)flushAll();});
+
+/* ---------- backup: export / import ---------- */
+$("exportBtn").onclick=()=>{
+  flushAll();
+  const data={app:"kakitome",version:1,exportedAt:new Date().toISOString(),
+    memos:S.memos.map(m=>({id:m.id,...toDoc(m)}))};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const d=new Date(),name=`kakitome-backup-${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}.json`;
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  $("count").textContent=`${S.memos.length} 件のメモを書き出しました`;
+};
+$("importBtn").onclick=()=>{$("importFile").value="";$("importFile").click();};
+$("importFile").addEventListener("change",async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  let list;
+  try{const j=JSON.parse(await f.text());list=Array.isArray(j)?j:j.memos;if(!Array.isArray(list))throw 0;}
+  catch(_){alertLine("ファイルを読み込めませんでした。書き出したバックアップファイルを選んでください");return;}
+  flushAll();
+  let added=0,updated=0,skipped=0;
+  for(const raw of list){
+    if(!raw||typeof raw!=="object"||typeof raw.id!=="string"||!raw.id){skipped++;continue;}
+    const m=normalizeMemo(raw),cur=S.memos.find(x=>x.id===m.id);
+    if(cur&&cur.updatedAt>=m.updatedAt){skipped++;continue;}
+    S.deleted.delete(m.id);
+    try{await S.backend.save(m.id,toDoc(m));cur?updated++:added++;}catch(_){skipped++;}
+  }
+  alertLine(`読み込み完了：追加 ${added} 件・更新 ${updated} 件`+(skipped?`・変更なし ${skipped} 件`:""));
+});
+function alertLine(t){renderList();$("count").textContent=t;}
+
+/* ---------- boot ---------- */
+function attach(backend,label){
+  S.backend=backend;$("where").textContent=label;
+  backend.subscribe(list=>{
+    S.loaded=true;
+    const local=Object.fromEntries(S.memos.filter(m=>S.dirty[m.id]).map(m=>[m.id,m]));
+    S.memos=list.filter(m=>!S.deleted.has(m.id)).map(m=>local[m.id]||normalizeMemo(m));
+    for(const id in local)if(!S.memos.some(m=>m.id===id))S.memos.push(local[id]);
+    if(S.sel&&!current())S.sel=null;
+    if(S.first){S.first=false;if(!S.sel&&wide()){const f=visible()[0];if(f){S.sel=f.id;render(true);return;}}}
+    render();
+  });
+}
+render();
+attach(localBackend(),"このブラウザに保存");
+</script>
+</body>
+</html>
