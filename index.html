@@ -62,6 +62,8 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 
 /* ---- list pane ---- */
 .side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.brand-actions{display:flex;gap:6px;align-items:center}
+#sound[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:2px}
 h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
 .search{position:relative}
@@ -172,8 +174,14 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
   <aside class="side" aria-label="メモ一覧">
     <div class="brand">
       <h1>かきとめ帳</h1>
+      <div class="brand-actions">
+      <button class="btn ghost icon" id="sound" type="button" aria-pressed="false" aria-label="効果音" title="効果音：オフ">
+        <svg class="i" id="sndOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="m17 9 5 6M22 9l-5 6"/></svg>
+        <svg class="i" id="sndOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/></svg>
+      </button>
       <button class="btn primary" id="new" type="button" title="新しいメモ（Ctrl+N / Alt+N）">
         <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規メモ</button>
+      </div>
     </div>
     <div class="search">
       <svg class="i lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -236,6 +244,7 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
           <div><dt>ピン留めとお気に入り</dt><dd><b>ピン留め</b>したメモは一覧の一番上に固定されます。<b>お気に入り</b>にしたメモは、一覧上部の「お気に入り」でまとめて見られます。</dd></div>
           <div><dt>タグで整理</dt><dd>タイトルの下の欄にタグを入力して <span class="kbd">Enter</span> で追加、× で外せます。一覧上部のタグを押すと、そのタグのメモだけを表示します。</dd></div>
           <div><dt>並び替えと削除</dt><dd>並び順は「更新が新しい順・古い順・作成が新しい順」から選べます。削除は「削除」→「削除する」で確定し、元に戻せません。</dd></div>
+          <div><dt>効果音</dt><dd>右上のスピーカーボタンで、タップ音・入力音・保存完了の音をオンにできます。最初はオフになっています。</dd></div>
           <div><dt>保存場所</dt><dd>メモは<b>このブラウザの中だけ</b>に保存され、外部には送信されません。別の端末やブラウザからは見えず、ブラウザの閲覧データを消去するとメモも消えます。</dd></div>
           <div><dt>バックアップ</dt><dd>一覧の下の「バックアップを書き出す」で、全メモを1つのファイル（.json）に保存できます。別の端末やブラウザで「バックアップから読み込む」を押してそのファイルを選ぶと、メモを移せます。同じメモがある場合は、更新が新しいほうを残します。</dd></div>
           <div><dt>スマートフォン</dt><dd>一覧でメモを押すと編集画面に切り替わり、「← 一覧」で戻ります。</dd></div>
@@ -282,6 +291,41 @@ const ICON={
 };
 try{const p=JSON.parse(localStorage.getItem(PREF_KEY)||"{}");if(["updated-desc","updated-asc","created-desc"].includes(p.sort))S.sort=p.sort;}catch(e){}
 $("sort").value=S.sort;
+function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({sort:S.sort,sound:SND.on}))}catch(e){}}
+
+/* ---------- sound effects (synthesized with Web Audio; off by default) ---------- */
+const SND={on:false,ctx:null,noise:null,lastTick:0,lastChime:0};
+try{SND.on=JSON.parse(localStorage.getItem(PREF_KEY)||"{}").sound===true;}catch(e){}
+function actx(){
+  if(!SND.ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;SND.ctx=new C();
+    const n=Math.floor(SND.ctx.sampleRate*.03),b=SND.ctx.createBuffer(1,n,SND.ctx.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=Math.random()*2-1;SND.noise=b;}
+  if(SND.ctx.state==="suspended")SND.ctx.resume().catch(()=>{});
+  return SND.ctx;
+}
+function blip(c,{f0,f1=f0,dur,gain,at=0,type="sine"}){
+  const t=c.currentTime+at,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(f0,t);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.004);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur+.02);
+}
+const SOUNDS={
+  tap(c){blip(c,{f0:1100,f1:600,dur:.07,gain:.12});},
+  tick(c){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t=c.currentTime;
+    s.buffer=SND.noise;f.type="bandpass";f.frequency.value=4500;f.Q.value=.8;
+    g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+.02);
+    s.connect(f).connect(g).connect(c.destination);s.start(t);s.stop(t+.03);},
+  saved(c){for(const[f,at]of[[1318.5,0],[1760,.12]]){blip(c,{f0:f,dur:.6,gain:.07,at});blip(c,{f0:f*2,dur:.25,gain:.025,at});}},
+};
+function play(name){
+  if(!SND.on)return;const now=performance.now();
+  if(name==="tick"){if(now-SND.lastTick<45)return;SND.lastTick=now;}
+  if(name==="saved"){if(now-SND.lastChime<1500)return;SND.lastChime=now;}
+  try{const c=actx();if(c)SOUNDS[name](c);}catch(e){}
+}
+function renderSound(){const b=$("sound");b.setAttribute("aria-pressed",SND.on);b.title="効果音："+(SND.on?"オン":"オフ");
+  $("sndOn").toggleAttribute("hidden",!SND.on);$("sndOff").toggleAttribute("hidden",SND.on);}
+renderSound();
 if(IS_MAC)document.querySelectorAll(".kbd.alt").forEach(k=>{k.textContent="⌥ Option";});
 
 /* ---------- text helpers (search is width/kana insensitive) ---------- */
@@ -458,7 +502,7 @@ function persist(id){
   const p=(S.chain[id]||Promise.resolve()).then(run,run);
   S.chain[id]=p.catch(()=>{});
   p.then(()=>{if(S.seq[id]!==seq||S.timers[id])return;
-      S.dirty[id]=false;S.state[id]="saved";S.savedAt[id]=Date.now();if(id===S.sel)renderStatus();},
+      S.dirty[id]=false;S.state[id]="saved";S.savedAt[id]=Date.now();if(id===S.sel){renderStatus();if(m.title.trim()||m.body.trim())play("saved");}},
     e=>{if(S.seq[id]!==seq)return;S.state[id]="error";
       S.err[id]=e&&e.code==="local_unavailable"?"ブラウザに保存できません（容量や設定を確認してください）":"もう一度お試しください";
       if(id===S.sel)renderStatus();});
@@ -514,6 +558,9 @@ $("del").onclick=()=>{
 };
 
 /* ---------- events ---------- */
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button");if(b&&b.id!=="sound")play("tap");},true);
+for(const id of ["title","body"])$(id).addEventListener("input",()=>play("tick"));
+$("sound").onclick=()=>{SND.on=!SND.on;savePrefs();renderSound();if(SND.on)play("tap");};
 $("pin").onclick=()=>toggle("pinned");
 $("fav").onclick=()=>toggle("favorite");
 $("title").addEventListener("input",edit);
@@ -535,7 +582,7 @@ $("q").addEventListener("keydown",e=>{
 $("qClear").onclick=clearSearch;
 $("vAll").onclick=()=>{S.view="all";renderList();};
 $("vFav").onclick=()=>{S.view="fav";renderList();};
-$("sort").addEventListener("change",e=>{S.sort=e.target.value;try{localStorage.setItem(PREF_KEY,JSON.stringify({sort:S.sort}))}catch(_){}renderList();});
+$("sort").addEventListener("change",e=>{S.sort=e.target.value;savePrefs();renderList();});
 $("new").onclick=createMemo;$("new2").onclick=createMemo;
 $("showGuide").onclick=()=>{flushAll();S.sel=null;resetDelete();$("app").classList.add("editing");render();$("blank").scrollTop=$("guide").offsetTop-16;};
 $("back2").onclick=()=>{$("app").classList.remove("editing");renderList();};
