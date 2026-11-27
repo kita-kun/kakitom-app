@@ -311,10 +311,11 @@ function blip(c,{f0,f1=f0,dur,gain,at=0,type="sine"}){
 }
 const SOUNDS={
   tap(c){blip(c,{f0:1100,f1:600,dur:.07,gain:.12});},
-  tick(c){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t=c.currentTime;
-    s.buffer=SND.noise;f.type="bandpass";f.frequency.value=4500;f.Q.value=.8;
-    g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+.02);
-    s.connect(f).connect(g).connect(c.destination);s.start(t);s.stop(t+.03);},
+  tick(c){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t=c.currentTime,v=.9+Math.random()*.2;
+    s.buffer=SND.noise;f.type="bandpass";f.frequency.value=3200*v;f.Q.value=1.2;
+    g.gain.setValueAtTime(.16,t);g.gain.exponentialRampToValueAtTime(0.0001,t+.025);
+    s.connect(f).connect(g).connect(c.destination);s.start(t);s.stop(t+.03);
+    blip(c,{f0:1700*v,f1:1100*v,dur:.022,gain:.07,type:"triangle"});},
   saved(c){for(const[f,at]of[[1318.5,0],[1760,.12]]){blip(c,{f0:f,dur:.6,gain:.07,at});blip(c,{f0:f*2,dur:.25,gain:.025,at});}},
 };
 function play(name){
@@ -559,7 +560,7 @@ $("del").onclick=()=>{
 
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("button");if(b&&b.id!=="sound")play("tap");},true);
-for(const id of ["title","body"])$(id).addEventListener("input",()=>play("tick"));
+for(const id of ["title","body","q","tagInput"])$(id).addEventListener("input",()=>play("tick"));
 $("sound").onclick=()=>{SND.on=!SND.on;savePrefs();renderSound();if(SND.on)play("tap");};
 $("pin").onclick=()=>toggle("pinned");
 $("fav").onclick=()=>toggle("favorite");
