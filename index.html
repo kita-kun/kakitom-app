@@ -63,6 +63,47 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 /* ---- list pane ---- */
 .side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
 .brand-actions{display:flex;gap:6px;align-items:center}
+/* mode switch + calendar */
+.modeseg{display:flex;width:100%}
+.modeseg button{flex:1;justify-content:center}
+.app.calmode .search,.app.calmode .tools,.app.calmode .tagbar,.app.calmode .about,.app.calmode #list{display:none!important}
+.app:not(.calmode) #cal{display:none!important}
+#cal{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto}
+@media (max-width:720px){#cal .timeline{flex:none;overflow:visible}}
+.cal-head{display:flex;align-items:center;gap:4px}
+.cal-head strong{flex:1;text-align:center;font-family:var(--f-display);font-size:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:6px}
+.cal-grid .wd{font-size:11px;text-align:center;color:var(--muted);padding:2px 0}
+.cal-grid .wd.sun{color:var(--danger)}.cal-grid .wd.sat{color:var(--accent)}
+.dcell{font:inherit;border:0;background:transparent;color:var(--ink);border-radius:8px;height:38px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0;font-variant-numeric:tabular-nums;font-size:13px}
+.dcell.sun{color:var(--danger)}.dcell.sat{color:var(--accent)}
+.dcell.out{opacity:.38}
+.dcell.today .num{border:1.5px solid var(--accent);border-radius:999px;min-width:24px;line-height:20px}
+.dcell[aria-pressed="true"]{background:var(--accent);color:var(--sheet)}
+.dcell[aria-pressed="true"] .dot{background:var(--sheet)}
+.dcell .dots{display:flex;gap:2px;height:5px}
+.dcell .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.dcell:hover{background:var(--accent-soft)}.dcell[aria-pressed="true"]:hover{background:var(--accent)}
+.day-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:2px}
+.day-head strong{font-size:14.5px}
+.timeline{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1 0 200px;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet)}
+.hour{display:grid;grid-template-columns:58px minmax(0,1fr);border-bottom:1px solid var(--line);min-height:40px}
+.hour:last-child{border-bottom:0}
+.hour.now{background:var(--accent-soft)}
+.hour .hl{font:inherit;font-family:var(--f-mono);font-size:12px;color:var(--muted);border:0;border-right:1px solid var(--line);background:transparent;cursor:pointer;text-align:left;padding:8px 8px;font-variant-numeric:tabular-nums}
+.hour .hl:hover{color:var(--accent)}
+.hour .evs{display:flex;flex-direction:column;gap:4px;padding:5px 6px;min-width:0}
+.ev{font:inherit;font-size:13px;text-align:left;border:0;border-left:3px solid var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:6px;padding:4px 8px;cursor:pointer;display:flex;gap:6px;min-width:0}
+.ev b{font-family:var(--f-mono);font-weight:500;font-size:11.5px;color:var(--accent);flex:none;padding-top:1px}
+.ev span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev[aria-current="true"]{outline:2px solid var(--accent)}
+.addslot{font:inherit;font-size:12px;border:1px dashed transparent;background:transparent;color:transparent;border-radius:6px;text-align:left;padding:4px 8px;cursor:pointer;flex:1}
+.hour:hover .addslot,.addslot:focus-visible{border-color:var(--line);color:var(--muted)}
+@media (hover:none){.addslot{color:var(--muted);opacity:.55}}
+.sched{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sched-lab{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.sched .field{width:auto;height:30px;font-size:13px;padding:0 8px}
+.memo .meta .when{color:var(--accent);flex:none;font-family:var(--f-mono)}
 #sound[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:2px}
 h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
@@ -183,6 +224,10 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
         <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規メモ</button>
       </div>
     </div>
+    <div class="seg modeseg" role="group" aria-label="表示の切り替え">
+      <button type="button" id="mMemo" aria-pressed="true">メモ</button>
+      <button type="button" id="mCal" aria-pressed="false">カレンダー</button>
+    </div>
     <div class="search">
       <svg class="i lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
       <input class="field" id="q" type="search" placeholder="タイトル・本文・タグを検索" aria-label="メモを検索" autocomplete="off">
@@ -210,6 +255,17 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
         <li>バックアップファイルで別の端末へ移せます</li>
         <li>パソコンでもスマートフォンでも使えます</li>
       </ul>
+    </section>
+    <section id="cal" aria-label="カレンダー">
+      <div class="cal-head">
+        <button class="btn ghost icon" id="calPrev" type="button" aria-label="前の月">‹</button>
+        <strong id="calTitle"></strong>
+        <button class="btn ghost icon" id="calNext" type="button" aria-label="次の月">›</button>
+        <button class="btn" id="calToday" type="button">今日</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-head"><strong id="dayTitle"></strong><button class="btn primary" id="dayAdd" type="button">＋ 予定を追加</button></div>
+      <ol class="timeline" id="timeline" aria-label="時間ごとの予定"></ol>
     </section>
     <ul class="list" id="list" aria-live="polite"></ul>
     <div class="side-foot"><span id="count"></span><button class="guide-link" id="showGuide" type="button">使い方</button><span id="where"></span></div>
@@ -244,6 +300,7 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
           <div><dt>ピン留めとお気に入り</dt><dd><b>ピン留め</b>したメモは一覧の一番上に固定されます。<b>お気に入り</b>にしたメモは、一覧上部の「お気に入り」でまとめて見られます。</dd></div>
           <div><dt>タグで整理</dt><dd>タイトルの下の欄にタグを入力して <span class="kbd">Enter</span> で追加、× で外せます。一覧上部のタグを押すと、そのタグのメモだけを表示します。</dd></div>
           <div><dt>並び替えと削除</dt><dd>並び順は「更新が新しい順・古い順・作成が新しい順」から選べます。削除は「削除」→「削除する」で確定し、元に戻せません。</dd></div>
+          <div><dt>カレンダー</dt><dd>一覧の上の「カレンダー」で月の表に切り替わります。日付を選ぶと時間ごとの予定が表示され、時刻を押すとその日時の予定メモを追加できます。メモの「予定」欄から、あとで日時を付けたり外したりもできます。</dd></div>
           <div><dt>効果音</dt><dd>右上のスピーカーボタンで、タップ音・入力音・保存完了の音をオンにできます。最初はオフになっています。</dd></div>
           <div><dt>保存場所</dt><dd>メモは<b>このブラウザの中だけ</b>に保存され、外部には送信されません。別の端末やブラウザからは見えず、ブラウザの閲覧データを消去するとメモも消えます。</dd></div>
           <div><dt>バックアップ</dt><dd>一覧の下の「バックアップを書き出す」で、全メモを1つのファイル（.json）に保存できます。別の端末やブラウザで「バックアップから読み込む」を押してそのファイルを選ぶと、メモを移せます。同じメモがある場合は、更新が新しいほうを残します。</dd></div>
@@ -265,6 +322,12 @@ h1{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em}
       <div class="editor">
         <input id="title" type="text" placeholder="タイトル" aria-label="タイトル" maxlength="120" autocomplete="off">
         <div class="stamp" id="stamp"></div>
+        <div class="sched" id="sched">
+          <span class="sched-lab"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>予定</span>
+          <input class="field" type="date" id="dDate" aria-label="予定の日付">
+          <input class="field" type="time" id="dTime" aria-label="予定の時刻" step="300">
+          <button class="btn ghost" id="dClear" type="button">予定を外す</button>
+        </div>
         <div class="tagrow" id="tagrow">
           <span id="etags" style="display:contents"></span>
           <input id="tagInput" type="text" placeholder="＃タグを追加（Enterで確定）" aria-label="タグを追加" maxlength="24" autocomplete="off">
@@ -291,7 +354,9 @@ const ICON={
 };
 try{const p=JSON.parse(localStorage.getItem(PREF_KEY)||"{}");if(["updated-desc","updated-asc","created-desc"].includes(p.sort))S.sort=p.sort;}catch(e){}
 $("sort").value=S.sort;
-function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({sort:S.sort,sound:SND.on}))}catch(e){}}
+S.mode="memo";S.calDay="";S.calMonth=null;S.calScroll=true;
+try{if(JSON.parse(localStorage.getItem(PREF_KEY)||"{}").mode==="cal")S.mode="cal";}catch(e){}
+function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({sort:S.sort,sound:SND.on,mode:S.mode}))}catch(e){}}
 
 /* ---------- sound effects (synthesized with Web Audio; off by default) ---------- */
 const SND={on:false,ctx:null,noise:null,lastTick:0,lastChime:0};
@@ -364,9 +429,15 @@ function normalizeMemo(m){
   const tags=Array.isArray(m.tags)?[...new Set(m.tags.filter(t=>typeof t==="string"&&t.trim()).map(t=>t.trim()))]:[];
   const c=Number(m.createdAt)||Number(m.updatedAt)||0,u=Number(m.updatedAt)||c;
   return{id:m.id,title:typeof m.title==="string"?m.title:"",body:typeof m.body==="string"?m.body:"",
-    pinned:!!m.pinned,favorite:!!m.favorite,tags,createdAt:c,updatedAt:u};
+    pinned:!!m.pinned,favorite:!!m.favorite,tags,createdAt:c,updatedAt:u,date:vDate(m.date),time:vDate(m.date)?vTime(m.time):""};
 }
-const toDoc=m=>({title:m.title,body:m.body,pinned:m.pinned,favorite:m.favorite,tags:m.tags,createdAt:m.createdAt,updatedAt:m.updatedAt});
+const toDoc=m=>({title:m.title,body:m.body,pinned:m.pinned,favorite:m.favorite,tags:m.tags,createdAt:m.createdAt,updatedAt:m.updatedAt,date:m.date||"",time:m.time||""});
+/* schedule helpers (local dates as YYYY-MM-DD) */
+function vDate(s){return typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
+function vTime(s){return typeof s==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(s)?s:"";}
+const ymd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const pYmd=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+function fmtSched(m){const d=pYmd(m.date);return`${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）${m.time?" "+m.time:""}`;}
 
 /* ---------- storage: this browser's localStorage ---------- */
 function localBackend(){
@@ -434,6 +505,7 @@ function renderList(){
       let from=0;if(first>28){from=first-14;s.append("…");}
       fillHL(s,flat,ts,from,Math.min(total,from+140));}
     const meta=document.createElement("span");meta.className="meta";
+    if(m.date){const w=document.createElement("span");w.className="when";w.textContent="予定 "+fmtSched(m);meta.append(w);}
     const d=document.createElement("span");d.className="d";d.textContent=fmt(S.sort==="created-desc"?m.createdAt:m.updatedAt);meta.append(d);
     if(m.tags.length){const tg=document.createElement("span");tg.className="tg";fillHL(tg,m.tags.map(x=>"#"+x).join(" "),ts);meta.append(tg);}
     b.append(row,s,meta);
@@ -442,6 +514,54 @@ function renderList(){
   }
   const shown=list.length,total=S.memos.length;
   $("count").textContent=!S.loaded?"":(shown===total?`${total} 件のメモ`:`${total} 件中 ${shown} 件を表示`);
+  renderCal();
+}
+/* ---------- calendar ---------- */
+function renderCal(){
+  const cal=S.mode==="cal";$("app").classList.toggle("calmode",cal);
+  $("mMemo").setAttribute("aria-pressed",!cal);$("mCal").setAttribute("aria-pressed",cal);
+  if(!cal)return;
+  const today=ymd(new Date());
+  if(!S.calDay)S.calDay=today;
+  const sel=pYmd(S.calDay);if(!S.calMonth)S.calMonth=new Date(sel.getFullYear(),sel.getMonth(),1);
+  const mo=S.calMonth,y=mo.getFullYear(),mi=mo.getMonth();
+  $("calTitle").textContent=`${y}年${mi+1}月`;
+  const byDay=new Map();S.memos.forEach(m=>{if(m.date){if(!byDay.has(m.date))byDay.set(m.date,[]);byDay.get(m.date).push(m);}});
+  const g=$("calGrid");g.textContent="";
+  [..."日月火水木金土"].forEach((w,i)=>{const d=document.createElement("span");d.className="wd"+(i===0?" sun":i===6?" sat":"");d.textContent=w;g.append(d);});
+  const start=new Date(y,mi,1-mo.getDay());
+  for(let i=0;i<42;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i),k=ymd(d),n=(byDay.get(k)||[]).length;
+    const b=document.createElement("button");b.type="button";b.className="dcell"+(d.getMonth()!==mi?" out":"")+(k===today?" today":"")+(d.getDay()===0?" sun":d.getDay()===6?" sat":"");
+    b.setAttribute("aria-pressed",k===S.calDay);b.setAttribute("aria-label",`${d.getMonth()+1}月${d.getDate()}日`+(n?` 予定${n}件`:""));
+    const num=document.createElement("span");num.className="num";num.textContent=d.getDate();
+    const dots=document.createElement("span");dots.className="dots";for(let j=0;j<Math.min(n,3);j++){const o=document.createElement("i");o.className="dot";dots.append(o);}
+    b.append(num,dots);b.onclick=()=>{S.calDay=k;if(d.getMonth()!==mi)S.calMonth=new Date(d.getFullYear(),d.getMonth(),1);S.calScroll=true;renderCal();};
+    g.append(b);
+  }
+  const day=pYmd(S.calDay),items=(byDay.get(S.calDay)||[]).slice().sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  $("dayTitle").textContent=`${day.getMonth()+1}月${day.getDate()}日（${WD[day.getDay()]}）`+(items.length?` ・ ${items.length}件`:"");
+  const tl=$("timeline");tl.textContent="";
+  const evBtn=m=>{const b=document.createElement("button");b.type="button";b.className="ev";b.setAttribute("aria-current",m.id===S.sel);
+    const t=document.createElement("b");t.textContent=m.time||"終日";const n=document.createElement("span");n.textContent=m.title.trim()||"無題の予定";
+    b.append(t,n);b.onclick=()=>select(m.id,{open:true,focus:m.title.trim()?"body":"title"});return b;};
+  const row=(label,aria,list,onAdd,cls)=>{const li=document.createElement("li");li.className="hour"+(cls?" "+cls:"");
+    const h=document.createElement("button");h.type="button";h.className="hl";h.textContent=label;h.setAttribute("aria-label",aria);h.onclick=onAdd;
+    const evs=document.createElement("div");evs.className="evs";list.forEach(m=>evs.append(evBtn(m)));
+    if(!list.length){const a=document.createElement("button");a.type="button";a.className="addslot";a.textContent="＋ 追加";a.setAttribute("aria-label",aria);a.onclick=onAdd;evs.append(a);}
+    li.append(h,evs);tl.append(li);return li;};
+  const allDay=items.filter(m=>!m.time);
+  if(allDay.length)row("終日","時間を決めずに予定を追加",allDay,()=>createMemo({date:S.calDay,time:""}));
+  const nowH=new Date().getHours();let focusRow=null;
+  for(let h=0;h<24;h++){
+    const hh=p2(h),list=items.filter(m=>m.time&&m.time.slice(0,2)===hh);
+    const li=row(`${hh}:00`,`${h}時に予定を追加`,list,()=>createMemo({date:S.calDay,time:`${hh}:00`}),S.calDay===today&&h===nowH?"now":"");
+    if(!focusRow&&list.length)focusRow=li;
+    if(h===(S.calDay===today?Math.max(0,nowH-1):8)&&!focusRow)li.dataset.anchor="1";
+  }
+  if(S.calScroll){S.calScroll=false;const target=focusRow||tl.querySelector('[data-anchor="1"]');if(target){const sc=tl.scrollHeight>tl.clientHeight+2?tl:$("cal");
+    if(sc===tl)tl.scrollTop=target.offsetTop-tl.offsetTop-4;else if(S.calScrollPage)sc.scrollTop=target.offsetTop-sc.offsetTop-60;S.calScrollPage=false;}}
+  if(S.loaded){const n=S.memos.filter(m=>m.date&&m.date.startsWith(`${y}-${p2(mi+1)}`)).length;$("count").textContent=`${mi+1}月の予定 ${n} 件`;}
 }
 function note(title,text,action){
   const li=document.createElement("li");li.className="list-note";
@@ -467,6 +587,10 @@ function renderEditor(force){
   if(force||(!S.dirty[m.id]&&ae!==$("body")))$("body").value=m.body;
   $("pin").setAttribute("aria-pressed",m.pinned);$("fav").setAttribute("aria-pressed",m.favorite);
   $("stamp").textContent="作成 "+fmt(m.createdAt,true)+(m.updatedAt&&m.updatedAt!==m.createdAt?"　・　更新 "+fmt(m.updatedAt,true):"");
+  const ae2=document.activeElement;
+  if(force||ae2!==$("dDate"))$("dDate").value=m.date||"";
+  if(force||ae2!==$("dTime"))$("dTime").value=m.time||"";
+  $("dTime").disabled=!m.date;$("dClear").hidden=!m.date;
   const et=$("etags");et.textContent="";
   m.tags.forEach(t=>{const c=document.createElement("span");c.className="etag";c.append("#"+t);
     const x=document.createElement("button");x.type="button";x.textContent="×";x.setAttribute("aria-label",`タグ「${t}」を外す`);
@@ -524,11 +648,14 @@ function edit(){
   m.title=$("title").value;m.body=$("body").value;m.updatedAt=Date.now();
   counts();schedule(m.id);renderList();
 }
-function createMemo(){
+function createMemo(opts){
   if(!S.backend)return;
+  const when=opts&&typeof opts.date==="string"?{date:vDate(opts.date),time:vTime(opts.time)}:null;
   const c=current();
-  if(c&&!c.title.trim()&&!c.body.trim()&&!c.tags.length){$("app").classList.add("editing");$("title").focus();return;} // reuse an empty memo
-  const now=Date.now(),m={id:uid(),title:"",body:"",pinned:false,favorite:false,tags:[],createdAt:now,updatedAt:now};
+  if(c&&!c.title.trim()&&!c.body.trim()&&!c.tags.length){ // reuse an empty memo
+    if(when){c.date=when.date;c.time=when.time;c.updatedAt=Date.now();schedule(c.id,0);render(true);}
+    $("app").classList.add("editing");$("title").focus();return;}
+  const now=Date.now(),m={id:uid(),title:"",body:"",pinned:false,favorite:false,tags:[],createdAt:now,updatedAt:now,date:when?when.date:"",time:when?when.time:""};
   S.memos.push(m);S.q="";$("q").value="";S.view="all";S.tag=null;
   select(m.id,{open:true,focus:"title"});persist(m.id);
 }
@@ -584,6 +711,19 @@ $("qClear").onclick=clearSearch;
 $("vAll").onclick=()=>{S.view="all";renderList();};
 $("vFav").onclick=()=>{S.view="fav";renderList();};
 $("sort").addEventListener("change",e=>{S.sort=e.target.value;savePrefs();renderList();});
+$("mMemo").onclick=()=>{S.mode="memo";savePrefs();renderList();};
+$("mCal").onclick=()=>{S.mode="cal";S.calScroll=true;savePrefs();renderList();};
+$("calPrev").onclick=()=>{const m=S.calMonth;S.calMonth=new Date(m.getFullYear(),m.getMonth()-1,1);renderCal();};
+$("calNext").onclick=()=>{const m=S.calMonth;S.calMonth=new Date(m.getFullYear(),m.getMonth()+1,1);renderCal();};
+$("calToday").onclick=()=>{const t=new Date();S.calDay=ymd(t);S.calMonth=new Date(t.getFullYear(),t.getMonth(),1);S.calScroll=true;renderCal();};
+$("dayAdd").onclick=()=>{const t=new Date(),h=S.calDay===ymd(t)?Math.min(23,t.getHours()+1):9;createMemo({date:S.calDay,time:`${p2(h)}:00`});};
+function setSched(date,time){const m=current();if(!m)return;
+  m.date=vDate(date);m.time=m.date?vTime(time):"";m.updatedAt=Date.now();
+  if(m.date){S.calDay=m.date;const d=pYmd(m.date);S.calMonth=new Date(d.getFullYear(),d.getMonth(),1);S.calScroll=true;}
+  schedule(m.id,300);render();}
+$("dDate").addEventListener("change",e=>setSched(e.target.value,$("dTime").value));
+$("dTime").addEventListener("change",e=>{const m=current();if(m&&m.date)setSched(m.date,e.target.value);});
+$("dClear").onclick=()=>setSched("","");
 $("new").onclick=createMemo;$("new2").onclick=createMemo;
 $("showGuide").onclick=()=>{flushAll();S.sel=null;resetDelete();$("app").classList.add("editing");render();$("blank").scrollTop=$("guide").offsetTop-16;};
 $("back2").onclick=()=>{$("app").classList.remove("editing");renderList();};
